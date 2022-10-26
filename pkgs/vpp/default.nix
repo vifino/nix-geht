@@ -1,4 +1,7 @@
-{ stdenv, pkgs, runtimeShell, python3 }:
+{ stdenv, pkgs, lib,
+runtimeShell, python3,
+enableDpdk ? true,
+enableAfXdp ? false}:
 
 stdenv.mkDerivation rec {
   name = "vpp-${version}";
@@ -17,23 +20,26 @@ stdenv.mkDerivation rec {
     libffi openssl
 
     python3.pkgs.wrapPython(python3.withPackages (pp: with pp; [
-      ply
+      ply # for vppapigen
     ]))
 
     # linux-cp deps
     libnl libmnl
 
-    # af_xdp deps
-    libbpf
+    #libbpf
+    #libelf
+  ]
+  # dpdk plugin
+  ++ lib.optional enableDpdk [ dpdk libpcap jansson ]
+  # af_xdp deps - broken: af_xdp plugins - no working libbpf found - af_xdp plugin disabled
+  ++ lib.optional enableAfXdp libbpf
 
-    # dpdk - needs static libraries, dunno how to do that.
-    #dpdk
-  ];
+  ++ lib.optional (enableDpdk || enableAfXdp) libelf;
 
   # Needs patches..
   patchPhase = ''
     # This attempts to use git to fetch the version, but we already know it.
-    printf "#!${runtimeShell}\necho '${version}~0-fakerev'\n" > scripts/version
+    printf "#!${runtimeShell}\necho '${version}'\n" > scripts/version
     chmod +x scripts/version
     ./scripts/version
     substituteInPlace pkg/CMakeLists.txt --replace 'file(READ "/etc/os-release" os_release)' 'set(os_release "NAME=NIX; ID=nix")'
@@ -41,14 +47,18 @@ stdenv.mkDerivation rec {
     patchShebangs .
   '';
 
+  enableParallelBuilding = true;
   cmakeFlags = [ 
+    "-DCMAKE_INSTALL_LIBDIR=lib" # wants a relative path
+    
     # For debugging CMake:
     #"--trace-source=CMakeLists.txt"
     #"--trace-expand"
-  ];
+  ]
+  # Link against system DPDK. Note that this is actually statically linked as well.
+  ++ lib.optional enableDpdk "-DVPP_USE_SYSTEM_DPDK=true";
 
   # TODO: Add service
   # TODO: Add users/group for default config.
-  # TODO: Fix plugin path.
-  # TODO: Make dpdk work.. grr. Maybe link dynamically? Or use built-in dpdk?
+  # TODO: RDMA plugin - needs libibverbs.a, can probably get that from rdma-core if not removing static libs?
 }
