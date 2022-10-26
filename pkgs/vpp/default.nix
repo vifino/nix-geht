@@ -1,6 +1,7 @@
 { stdenv, pkgs, lib,
 runtimeShell, python3,
 enableDpdk ? true,
+enableRdma ? true,
 enableAfXdp ? false}:
 
 stdenv.mkDerivation rec {
@@ -14,7 +15,7 @@ stdenv.mkDerivation rec {
   };
   sourceRoot = "source/src";
 
-  nativeBuildInputs = with pkgs; [ pkg-config curl git cmake ninja nasm coreutils ];
+  nativeBuildInputs = with pkgs; [ pkg-config cmake ninja nasm coreutils ];
   buildInputs = with pkgs; [
     libconfuse numactl libuuid
     libffi openssl
@@ -25,23 +26,25 @@ stdenv.mkDerivation rec {
 
     # linux-cp deps
     libnl libmnl
-
-    #libbpf
-    #libelf
   ]
   # dpdk plugin
   ++ lib.optional enableDpdk [ dpdk libpcap jansson ]
+  # rdma plugin - Mellanox/NVIDIA ConnectX-4+ device driver. Needs overridden rdma-core with static libs.
+  ++ lib.optional enableRdma (rdma-core.overrideAttrs (x: {
+    cmakeFlags = x.cmakeFlags ++ [ "-DENABLE_STATIC=1" "-DBUILD_SHARED_LIBS:BOOL=false"];
+  }))
   # af_xdp deps - broken: af_xdp plugins - no working libbpf found - af_xdp plugin disabled
   ++ lib.optional enableAfXdp libbpf
-
+  # Shared deps for DPDK and AF_XDP
   ++ lib.optional (enableDpdk || enableAfXdp) libelf;
 
-  # Needs patches..
+  # Needs a few patches.
   patchPhase = ''
     # This attempts to use git to fetch the version, but we already know it.
     printf "#!${runtimeShell}\necho '${version}'\n" > scripts/version
     chmod +x scripts/version
-    ./scripts/version
+
+    # Nix has no /etc/os-release.
     substituteInPlace pkg/CMakeLists.txt --replace 'file(READ "/etc/os-release" os_release)' 'set(os_release "NAME=NIX; ID=nix")'
 
     patchShebangs .
