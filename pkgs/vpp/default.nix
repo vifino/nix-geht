@@ -15,7 +15,7 @@ stdenv.mkDerivation rec {
   };
   sourceRoot = "source/src";
 
-  nativeBuildInputs = with pkgs; [ pkg-config curl git cmake ninja nasm coreutils ];
+  nativeBuildInputs = with pkgs; [ pkg-config cmake ninja nasm coreutils ];
   buildInputs = with pkgs; [
     libconfuse numactl libuuid
     libffi openssl
@@ -26,9 +26,6 @@ stdenv.mkDerivation rec {
 
     # linux-cp deps
     libnl libmnl
-
-    #libbpf
-    #libelf
   ]
   # dpdk plugin
   ++ lib.optional enableDpdk [ dpdk libpcap jansson ]
@@ -38,7 +35,7 @@ stdenv.mkDerivation rec {
   }))
   # af_xdp deps - broken: af_xdp plugins - no working libbpf found - af_xdp plugin disabled
   ++ lib.optional enableAfXdp libbpf
-
+  # Shared deps for DPDK and AF_XDP
   ++ lib.optional (enableDpdk || enableAfXdp) libelf;
 
   # Needs patches..
