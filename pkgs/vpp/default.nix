@@ -90,13 +90,21 @@ in {
       #ply
       vpp
     ];
-    
-    postPatch = ''sh
-      # Hacky patch to replace function "find_api_dir" to return the known path. Hey, it works!
-      sed -Ei '169,236d;237s@.*@        return "${vpp}/share/vpp/api"@' vpp_papi/vpp_papi.py
 
-      # Remove some broken tests.
-      rm vpp_papi/tests/test_vpp_papi.py vpp_papi/tests/test_vpp_format.py vpp_papi/tests/test_vpp_serializer.py
+    checkInputs = with python3.pkgs.pythonPackages; [ parameterized ];
+
+    patches = [
+      # Replaces VPPApiJSONFiles.find_api_dir with placeholder variable vpp
+      ./vpp_papi-replace-find_api_dir.patch
+    ];
+
+    postPatch = ''sh
+      # Replace the placeholder with the nix store path of our dependency.
+      substituteInPlace vpp_papi/vpp_papi.py --subst-var-by vpp ${vpp}
+
+      # Remove broken tests.
+      rm vpp_papi/tests/test_vpp_papi.py # References old shmem transport, doesn't work with new variant. Ugh.
+      rm vpp_papi/tests/test_vpp_serializer.py # Test wants logs DEBUG or higher, but none are triggered?
     '';
   };
 }
