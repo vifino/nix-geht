@@ -5,12 +5,12 @@ with pkgs.python3Packages;
 
 buildPythonPackage rec {
   pname = "vppcfg";
-  version = "0.0.2-vifino";
+  version = "0.0.2";
   src = pkgs.fetchFromGitHub {
-    owner = "vifino";
+    owner = "pimvanpelt";
     repo = "vppcfg";
-    rev = "9517b8dddd62a30fe8809a43c914387a8b34dc4f";
-    hash = "sha256-quP0O2X43cgb1yqtpLe89Rq02bBqUzSP/XyIH3zoRko=";
+    rev = "c10b7bbabb8d65e4cfa83a4b88de95bb4370e933";
+    hash = "sha256-YFfLUBxdC30YbmB0EQKXOZE5a+hOW2hSI641poVfybM=";
   };
 
   propagatedBuildInputs = [ requests yamale netaddr vpp-pkgs.vpp_papi ];
