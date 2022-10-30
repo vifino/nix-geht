@@ -1,6 +1,6 @@
-{ config, pkgs, lib,
-vpp-pkgs }:
+{ config, pkgs, lib, vpp-pkgs, ... }:
 
+with lib;
 let
   cfg = config.vpp;
   vpp = vpp-pkgs.vpp;
@@ -155,10 +155,10 @@ in
           log /var/log/vpp/vpp.log
           cli-listen /run/vpp/cli.sock
           gid vpp
-          ${lib.optionalString cfg.pollSleepUsec ''
+          ${optionalString cfg.pollSleepUsec ''
           poll-sleep-usec ${cfg.pollSleepUsec}
           ''}
-          ${lib.optionalString cfg.bootstrap != "" ''
+          ${optionalString cfg.bootstrap != "" ''
           exec /etc/vpp/bootstrap.vpp
           ''}
         }
@@ -181,7 +181,7 @@ in
 
         cpu {
           main-core ${cfg.mainCore}
-          ${lib.optionalString cfg.workers != 0 ''
+          ${optionalString cfg.workers != 0 ''
           workers ${cfg.workers}
           ''}
         }
@@ -198,7 +198,7 @@ in
 
         # TODO: Plugins.
 
-        ${lib.optionalString cfg.extraConfig != "" ''
+        ${optionalString cfg.extraConfig != "" ''
         # Extra Config
         ${cfg.extraConfig}
         ''}
@@ -211,23 +211,23 @@ in
       text = cfg.bootstrap;
     };
 
-    pagesRequired = divRoundUp (cfg.mainHeapSize + cfg.statsegSize) 2;
-    bufferPages = divRoundUp (cfg.buffersPerNuma * cfg.numberNumaNodes) buffersPer2MHP;
-
     # The math doesn't work if the default hugepage size isn't 2M.
     boot.kernelParams = mkMerge [ "default_hugepagesz=2M" ];
-    boot.kernel.sysctl = {
+    boot.kernel.sysctl = let 
+      pagesRequired = divRoundUp (cfg.mainHeapSize + cfg.statsegSize) 2;
+      bufferPages = divRoundUp (cfg.buffersPerNuma * cfg.numberNumaNodes) buffersPer2MHP;
+    in {
       # Set netlink buffer size.
-      "net.core.rmem_default" = lib.mkDefault cfg.netlinkBufferSize * MB;
-      "net.core.wmem_default" = lib.mkDefault cfg.netlinkBufferSize * MB;
-      "net.core.rmem_max" = lib.mkDefault cfg.netlinkBufferSize * MB;
-      "net.core.wmem_max" = lib.mkDefault cfg.netlinkBufferSize * MB;
+      "net.core.rmem_default" = mkDefault cfg.netlinkBufferSize * MB;
+      "net.core.wmem_default" = mkDefault cfg.netlinkBufferSize * MB;
+      "net.core.rmem_max" = mkDefault cfg.netlinkBufferSize * MB;
+      "net.core.wmem_max" = mkDefault cfg.netlinkBufferSize * MB;
 
       # Hugepages.
-      "vm.nr_hugepages" = lib.mkDefault pagesRequired;
-      "vm.nr_overcommit_hugepages" = lib.mkDefault bufferPages;
-      "vm.max_map_count" = lib.mkDefault 3 * (pagesRequired + bufferPages);
-      "vm.hugetlb_shm_group" = lib.mkDefault 0;
+      "vm.nr_hugepages" = mkDefault pagesRequired;
+      "vm.nr_overcommit_hugepages" = mkDefault bufferPages;
+      "vm.max_map_count" = mkDefault 3 * (pagesRequired + bufferPages);
+      "vm.hugetlb_shm_group" = mkDefault 0;
       # kernel.shmmax is already set to a huge number.
     };
   };
