@@ -39,14 +39,6 @@ in
         Optional startup commands to execute on startup to bootstrap the VPP instance.
       '';
     };
-    extraConfig = mkOption {
-      type = types.lines;
-      default = "";
-      description = ''
-        Additional startup config to configure VPP with.
-        Add clauses like `dpdk {` here.
-      '';
-    };
     defaultLogLevel = mkOption {
       type = loglevelType;
       default = "info";
@@ -110,6 +102,23 @@ in
       description = ''
         Sets the number of NUMA nodes for maximum number of hugepages calculation.
         Defaults to 4 (AMD EPYC, 4 Processor systems, etc..)
+      '';
+    };
+    useVfioPci = mkOption {
+      type = types.bool;
+      default = true;
+      description = ''
+        Use vfio-pci as the UIO driver for DPDK.
+        Requires IOMMU to be enabled and supported. 
+        See: https://doc.dpdk.org/guides/linux_gsg/linux_drivers.html
+      '';
+    };
+    extraConfig = mkOption {
+      type = types.lines;
+      default = "";
+      description = ''
+        Additional startup config to configure VPP with.
+        Add clauses like `dpdk {` here.
       '';
     };
     netlinkBufferSize = mkOption {
@@ -203,15 +212,21 @@ in
         }
 
         plugins {
-          # Load default plugins.
-          plugin default { enable }
-
           # Linux CP
           plugin linux_nl_plugin.so { enable }
           plugin linux_cp_plugin.so { enable }
         }
 
-        # TODO: DPDK config.
+        dpdk {
+          # Make device 0000:00:14.1 (enp0s20f1) become GigabitEthernet0/20/1
+          # instead of GigabitEthernet0/14/1 to be more like kernel/cisco names.
+          decimal-interface-names
+          ${optionalString cfg.useVfioPci ''
+          # Always use vfio-pci when an IOMMU is available.
+          # See also: https://doc.dpdk.org/guides/linux_gsg/linux_drivers.html
+          uio-driver vfio-pci
+          ''}
+        }
 
         ${optionalString (cfg.extraConfig != "") ''
         # Extra Config
@@ -226,8 +241,11 @@ in
       text = cfg.bootstrap;
     };
 
+    boot.kernelModules = mkIf cfg.useVfioPci [ "vfio-pci" ];
+
     # The math doesn't work if the default hugepage size isn't 2M.
     boot.kernelParams = [ "default_hugepagesz=2M" ];
+
     boot.kernel.sysctl = let 
       pagesRequired = divRoundUp (cfg.mainHeapSize + cfg.statsegSize) 2;
       bufferPages = divRoundUp (cfg.buffersPerNuma * cfg.numberNumaNodes) buffersPer2MHP;
