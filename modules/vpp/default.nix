@@ -41,7 +41,7 @@ in
     };
     extraConfig = mkOption {
       type = types.lines;
-      #default = "";
+      default = "";
       description = ''
         Additional startup config to configure VPP with.
         Add clauses like `dpdk {` here.
@@ -143,7 +143,7 @@ in
       serviceConfig = {
         Type = "simple";
         ExecStart = "${cfg.package}/bin/vpp -c /etc/vpp/startup.conf";
-        ExecStartPost = "/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api";
+        ExecStartPost = "${pkgs.coreutils}/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api";
       };
     };
 
@@ -161,10 +161,10 @@ in
           log /var/log/vpp/vpp.log
           cli-listen /run/vpp/cli.sock
           gid vpp
-          ${optionalString cfg.pollSleepUsec ''
-          poll-sleep-usec ${cfg.pollSleepUsec}
+          ${optionalString (cfg.pollSleepUsec != 0) ''
+          poll-sleep-usec ${toString cfg.pollSleepUsec}
           ''}
-          ${optionalString cfg.bootstrap != "" ''
+          ${optionalString (cfg.bootstrap != "") ''
           exec /etc/vpp/bootstrap.vpp
           ''}
         }
@@ -180,31 +180,40 @@ in
         socksvr { default }
 
         statseg {
-          size ${cfg.statsegSize}M
+          size ${toString cfg.statsegSize}M
           page-size default-hugepage
           per-node-counters off
         }
 
         cpu {
-          main-core ${cfg.mainCore}
-          ${optionalString cfg.workers != 0 ''
-          workers ${cfg.workers}
+          main-core ${toString cfg.mainCore}
+          ${optionalString (cfg.workers != 0) ''
+          workers ${toString cfg.workers}
           ''}
         }
         memory {
-          main-heap-size ${cfg.mainHeapSize}M
+          main-heap-size ${toString cfg.mainHeapSize}M
           main-heap-page-size default-hugepage
         }
         buffers {
-          buffers-per-numa ${cfg.buffersPerNuma}
+          buffers-per-numa ${toString cfg.buffersPerNuma}
           # buffer = 128b header + 128b scratchpad + data-size
           default data-size 2048
           page-size default-hugepage
         }
 
-        # TODO: Plugins.
+        plugins {
+          # Load default plugins.
+          plugin default { enable }
 
-        ${optionalString cfg.extraConfig != "" ''
+          # Linux CP
+          plugin linux_nl_plugin.so { enable }
+          plugin linux_cp_plugin.so { enable }
+        }
+
+        # TODO: DPDK config.
+
+        ${optionalString (cfg.extraConfig != "") ''
         # Extra Config
         ${cfg.extraConfig}
         ''}
@@ -218,7 +227,7 @@ in
     };
 
     # The math doesn't work if the default hugepage size isn't 2M.
-    boot.kernelParams = mkMerge [ "default_hugepagesz=2M" ];
+    boot.kernelParams = [ "default_hugepagesz=2M" ];
     boot.kernel.sysctl = let 
       pagesRequired = divRoundUp (cfg.mainHeapSize + cfg.statsegSize) 2;
       bufferPages = divRoundUp (cfg.buffersPerNuma * cfg.numberNumaNodes) buffersPer2MHP;

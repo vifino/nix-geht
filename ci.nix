@@ -39,7 +39,7 @@ let
   nurPkgs =
     flattenPkgs
       (listToAttrs
-        (map (n: nameValuePair n nurAttrs.${n})
+        (map (n: nameValuePair n nix-geht.${n})
           (filter (n: !isReserved n)
             (attrNames nix-geht.pkgs))));
 
