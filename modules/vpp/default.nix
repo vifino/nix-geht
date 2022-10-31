@@ -1,9 +1,9 @@
-{ config, pkgs, lib, vpp-pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 with lib;
 let
   cfg = config.services.vpp;
-  vpp = vpp-pkgs.vpp;
+  vpp-pkgs = pkgs.callPackage ../../pkgs/vpp {}; # TODO: I just wanna have this. How can I make it prettier?
 
   # Helpers.
   MB = 1024 * 1024;
@@ -17,6 +17,12 @@ in
 {
   options.services.vpp = {
     enable = mkEnableOption "Vector Packet Processor";
+    package = mkOption {
+      default = vpp-pkgs.vpp; 
+      defaultText = "pkgs.vpp";
+      type = types.package;
+      description = "vpp package to use.";
+    };
     pollSleepUsec = mkOption {
       type = with types; nullOr (int);
       default = 100;
@@ -125,7 +131,7 @@ in
   };
 
   config = mkIf cfg.enable {
-    environment.systemPackages = with pkgs; [ vpp ];
+    environment.systemPackages = [ cfg.package ];
     users.groups.vpp = {};
 
     # Create a VPP Service.
@@ -133,10 +139,10 @@ in
       wantedBy = [ "multi-user.target" ];
       after = [ "network.target" ];
       description = "Vector Packet Processor Engine";
-      path = [ vpp ]; 
+      path = [ cfg.package ]; 
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${vpp}/bin/vpp -c /etc/vpp/startup.conf";
+        ExecStart = "${cfg.package}/bin/vpp -c /etc/vpp/startup.conf";
         ExecStartPost = "/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api";
       };
     };
@@ -218,15 +224,15 @@ in
       bufferPages = divRoundUp (cfg.buffersPerNuma * cfg.numberNumaNodes) buffersPer2MHP;
     in {
       # Set netlink buffer size.
-      "net.core.rmem_default" = mkDefault cfg.netlinkBufferSize * MB;
-      "net.core.wmem_default" = mkDefault cfg.netlinkBufferSize * MB;
-      "net.core.rmem_max" = mkDefault cfg.netlinkBufferSize * MB;
-      "net.core.wmem_max" = mkDefault cfg.netlinkBufferSize * MB;
+      "net.core.rmem_default" = mkDefault (cfg.netlinkBufferSize * MB);
+      "net.core.wmem_default" = mkDefault (cfg.netlinkBufferSize * MB);
+      "net.core.rmem_max" = mkDefault (cfg.netlinkBufferSize * MB);
+      "net.core.wmem_max" = mkDefault (cfg.netlinkBufferSize * MB);
 
       # Hugepages.
       "vm.nr_hugepages" = mkDefault pagesRequired;
       "vm.nr_overcommit_hugepages" = mkDefault bufferPages;
-      "vm.max_map_count" = mkDefault 3 * (pagesRequired + bufferPages);
+      "vm.max_map_count" = mkDefault (3 * pagesRequired + bufferPages);
       "vm.hugetlb_shm_group" = mkDefault 0;
       # kernel.shmmax is already set to a huge number.
     };
