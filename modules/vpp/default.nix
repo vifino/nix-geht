@@ -107,7 +107,7 @@ in
       '';
     };
     netlinkBufferSize = mkOption {
-      types = types.int;
+      type = types.int;
       default = 64;
       description = ''
         Set the sysctl options for netlink buffer sizes (in Megabyte).
@@ -115,7 +115,7 @@ in
       '';
     };
     additionalHugePages = mkOption {
-      types = types.int;
+      type = types.int;
       default = 0;
       description = ''
         Additional huge pages allowed to be overcommitted.
