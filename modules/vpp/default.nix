@@ -2,7 +2,7 @@
 
 with lib;
 let
-  cfg = config.vpp;
+  cfg = config.services.vpp;
   vpp = vpp-pkgs.vpp;
 
   # Helpers.
@@ -15,7 +15,7 @@ let
   loglevelType = types.enum [ "emerg" "alert" "crit" "error" "warn" "notice" "info" "debug" "disabled" ];
 in
 {
-  options.vpp = {
+  options.services.vpp = {
     enable = mkEnableOption "Vector Packet Processor";
     pollSleepUsec = mkOption {
       type = with types; nullOr (int);
