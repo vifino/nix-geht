@@ -104,12 +104,14 @@ in
         Defaults to 4 (AMD EPYC, 4 Processor systems, etc..)
       '';
     };
-    useVfioPci = mkOption {
-      type = types.bool;
-      default = true;
+    uioDriver = mkOption {
+      type = types.enum [ "vfio-pci" "uio_pci_generic" "igb_uio" ];
+      default = "vfio-pci";
       description = ''
-        Use vfio-pci as the UIO driver for DPDK.
-        Requires IOMMU to be enabled and supported. 
+        UIO driver to use.
+        Use vfio-pci when IOMMU is enabled and supported.
+        Use uio_pci_generic if you can't use vfio-pci.
+        Use igb_uio in special cases.
         See: https://doc.dpdk.org/guides/linux_gsg/linux_drivers.html
       '';
     };
@@ -145,6 +147,7 @@ in
 
     # Create a VPP Service.
     systemd.services.vpp = {
+      wantedBy = [ "multi-user.target" ];
       before = [ "network.target" "network-online.target" ];
       after = [ "network-pre.target" "systemd-sysctl.service" ];
       description = "Vector Packet Processor Engine";
@@ -223,11 +226,8 @@ in
           # Make device 0000:00:14.1 (enp0s20f1) become GigabitEthernet0/20/1
           # instead of GigabitEthernet0/14/1 to be more like kernel/cisco names.
           decimal-interface-names
-          ${optionalString cfg.useVfioPci ''
-          # Always use vfio-pci when an IOMMU is available.
-          # See also: https://doc.dpdk.org/guides/linux_gsg/linux_drivers.html
-          uio-driver vfio-pci
-          ''}
+
+          uio-driver ${cfg.uioDriver}
         }
 
         ${optionalString (cfg.extraConfig != "") ''
@@ -243,7 +243,8 @@ in
       text = cfg.bootstrap;
     };
 
-    boot.kernelModules = mkIf cfg.useVfioPci [ "vfio-pci" ];
+    boot.kernelModules = [ cfg.uioDriver ];
+    boot.extraModulePackages = optionals (cfg.uioDriver == "igb_uio") [ config.boot.kernelPackages.dpdk-kmods ];
 
     # The math doesn't work if the default hugepage size isn't 2M.
     boot.kernelParams = [ "default_hugepagesz=2M" ];
