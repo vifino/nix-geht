@@ -149,6 +149,7 @@ in
       after = [ "network.target" ];
       description = "Vector Packet Processor Engine";
       path = [ cfg.package ]; 
+      restartTriggers = [ cfg ]; # Restart on any changes to our config. VPP doesn't do reloads.
       serviceConfig = {
         Type = "simple";
         ExecStart = "${cfg.package}/bin/vpp -c /etc/vpp/startup.conf";
