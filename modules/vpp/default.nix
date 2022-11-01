@@ -145,11 +145,12 @@ in
 
     # Create a VPP Service.
     systemd.services.vpp = {
-      wantedBy = [ "multi-user.target" ];
-      after = [ "network.target" ];
+      before = [ "network.target" "network-online.target" ];
+      after = [ "network-pre.target" "systemd-sysctl.service" ];
       description = "Vector Packet Processor Engine";
       path = [ cfg.package ]; 
-      restartTriggers = [ cfg ]; # Restart on any changes to our config. VPP doesn't do reloads.
+      restartTriggers = [ config.environment.etc."vpp/startup.conf".source ]
+      ++ optionals (cfg.bootstrap != 0) [ config.environment.etc."vpp/bootstrap.vpp".source ]; # Restart on any changes to our config. VPP doesn't do reloads.
       serviceConfig = {
         Type = "simple";
         ExecStart = "${cfg.package}/bin/vpp -c /etc/vpp/startup.conf";
@@ -260,7 +261,7 @@ in
       # Hugepages.
       "vm.nr_hugepages" = mkDefault pagesRequired;
       "vm.nr_overcommit_hugepages" = mkDefault bufferPages;
-      "vm.max_map_count" = mkDefault (3 * pagesRequired + bufferPages);
+      "vm.max_map_count" = 65536; # mkDefault (3 * pagesRequired + bufferPages);
       "vm.hugetlb_shm_group" = mkDefault 0;
       # kernel.shmmax is already set to a huge number.
     };
