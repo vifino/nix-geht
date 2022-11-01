@@ -10,7 +10,7 @@ let
   divRoundUp = x: n: (x + (n - 1)) / n;
 
   # VPP data-size and buffer-size defaults are 2048b and 2496b, respectively.
-  # Thus, per 2M HugePage, we can fit 840 full pages. 
+  # Thus, per 2M HugePage, we can fit 840 full pages.
   buffersPer2MHP = 2 * MB / 2496;
   loglevelType = types.enum [ "emerg" "alert" "crit" "error" "warn" "notice" "info" "debug" "disabled" ];
 in
@@ -18,7 +18,7 @@ in
   options.services.vpp = {
     enable = mkEnableOption "Vector Packet Processor";
     package = mkOption {
-      default = vpp-pkgs.vpp; 
+      default = vpp-pkgs.vpp;
       defaultText = "pkgs.vpp";
       type = types.package;
       description = "vpp package to use.";
@@ -108,10 +108,13 @@ in
       type = types.enum [ "vfio-pci" "uio_pci_generic" "igb_uio" ];
       default = "vfio-pci";
       description = ''
-        UIO driver to use.
-        Use vfio-pci when IOMMU is enabled and supported.
+        UIO driver to use. Recommendations:
+        Use vfio-pci when IOMMU is enabled and supported. (default)
+
+        The latter two need IOMMU off or in passthrough mode.
         Use uio_pci_generic if you can't use vfio-pci.
-        Use igb_uio in special cases.
+        Use igb_uio when legacy interrupts aren't available, like when using VFs.
+
         See: https://doc.dpdk.org/guides/linux_gsg/linux_drivers.html
       '';
     };
@@ -120,7 +123,7 @@ in
       default = "";
       description = ''
         Additional startup config to configure VPP with.
-        Add clauses like `dpdk {` here.
+        Add clauses like `dpdk { ... }` here.
       '';
     };
     netlinkBufferSize = mkOption {
@@ -151,7 +154,7 @@ in
       before = [ "network.target" "network-online.target" ];
       after = [ "network-pre.target" "systemd-sysctl.service" ];
       description = "Vector Packet Processor Engine";
-      path = [ cfg.package ]; 
+      path = [ cfg.package ];
       restartTriggers = [ config.environment.etc."vpp/startup.conf".source ]
       ++ optionals (cfg.bootstrap != 0) [ config.environment.etc."vpp/bootstrap.vpp".source ]; # Restart on any changes to our config. VPP doesn't do reloads.
       serviceConfig = {
@@ -220,6 +223,18 @@ in
           # Linux CP
           plugin linux_nl_plugin.so { enable }
           plugin linux_cp_plugin.so { enable }
+
+          plugin arping_plugin.so { disable }
+          plugin igmp_plugin.so { disable }
+          plugin ping_plugin.so { disable }
+
+          # Broken plugins.
+          plugin lisp_plugin.so { disable }
+        }
+
+        linux-cp {
+          lcp-sync
+          lcp-auto-subint
         }
 
         dpdk {
@@ -249,7 +264,7 @@ in
     # The math doesn't work if the default hugepage size isn't 2M.
     boot.kernelParams = [ "default_hugepagesz=2M" ];
 
-    boot.kernel.sysctl = let 
+    boot.kernel.sysctl = let
       pagesRequired = divRoundUp (cfg.mainHeapSize + cfg.statsegSize) 2;
       bufferPages = divRoundUp (cfg.buffersPerNuma * cfg.numberNumaNodes) buffersPer2MHP;
     in {
