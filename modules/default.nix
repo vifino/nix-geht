@@ -1,3 +1,3 @@
 {
-  vpp = ./vpp;
+  vpp = import ./vpp;
 }

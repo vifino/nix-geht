@@ -1,7 +1,7 @@
-{ pkgs ? import <nixpkgs> { } }:
+{ system ? builtins.currentSystem, pkgs ? import <nixpkgs> { inherit system; } }:
 let
   mypkgs = pkgs.callPackage ./pkgs {};
-in 
+in
 rec {
   lib = import ./lib { inherit pkgs; }; # functions
   modules = import ./modules; # NixOS modules

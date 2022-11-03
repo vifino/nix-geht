@@ -1,18 +1,14 @@
-{ pkgs }:
-
+{ system, lib, pkgs, ... }:
+with lib;
 let
   inherit (pkgs) callPackage;
   vpp-pkgs = callPackage ./vpp {};
 in
 rec {
-  vpp = vpp-pkgs.vpp;
-  vppcfg = callPackage ./vppcfg { inherit (python3Packages) vpp_papi; };
-
-  python3Packages = rec {
-    # CI script should also look for packages here.
-    recurseForDerivations = true;
-
-    vpp_papi = vpp-pkgs.vpp_papi;
-  };
+  # TODO: More packages!
+} // optionalAttrs (!hasSuffix "-darwin" system) rec {
+  # Packages that won't run on Darwin.
+  inherit (vpp-pkgs) vpp vpp_papi;
+  vppcfg = callPackage ./vppcfg { inherit vpp_papi; };
 }
-  
+
