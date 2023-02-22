@@ -10,12 +10,12 @@
 }:
 assert (lib.asserts.assertMsg (!enableRdma || stdenv.isLinux) "Can't enable rdma_plugin - rdma-core only works on Linux");
 assert (lib.asserts.assertMsg (!enableAfXdp || stdenv.isLinux) "Can't enable af_xdp_plugin - Only exists on Linux"); let
-  version = "22.10";
+  version = "22.10.1";
   src = pkgs.fetchFromGitHub {
     owner = "FDio";
     repo = "vpp";
     rev = "v${version}";
-    hash = "sha256-wyUjtyPZXYO9PAv48qDfm17WoTPwZr7sa+6s8zgmA1k=";
+    hash = "sha256-HZKG0el7zMc/dsiWpcGjGaZlpylJKA2auLHmNow1yoc=";
   };
   getMeta = description:
     with lib; {
@@ -32,6 +32,13 @@ assert (lib.asserts.assertMsg (!enableAfXdp || stdenv.isLinux) "Can't enable af_
         "aarch64-freebsd"
       ];
     };
+
+  # We need DPDK v22.03, apparently. Yikes.
+  old-dpdk =
+    (import (builtins.fetchTarball {
+      url = "https://github.com/NixOS/nixpkgs/archive/ee01de29d2f58d56b1be4ae24c24bd91c5380cea.tar.gz";
+    }) {})
+    .dpdk;
 in rec {
   vpp = stdenv.mkDerivation rec {
     pname = "vpp";
@@ -61,7 +68,7 @@ in rec {
         libmnl
       ]
       # dpdk plugin
-      ++ lib.optionals enableDpdk [dpdk libpcap jansson]
+      ++ lib.optionals enableDpdk [old-dpdk libpcap jansson]
       # rdma plugin - Mellanox/NVIDIA ConnectX-4+ device driver. Needs overridden rdma-core with static libs.
       ++ lib.optionals enableRdma [
         (rdma-core.overrideAttrs (x: {
