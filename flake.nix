@@ -1,9 +1,17 @@
 {
   description = "vifino's Nix repository - nix geht!";
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
+  };
   outputs = {
     self,
     nixpkgs,
+    flake-compat,
   }: let
     systems = [
       "aarch64-linux"

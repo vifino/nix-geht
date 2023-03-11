@@ -1,13 +1,17 @@
-{
-  system ? builtins.currentSystem,
-  pkgs ? import <nixpkgs> {inherit system;},
-}: let
-  mypkgs = pkgs.callPackage ./pkgs {};
-in
-  rec {
-    lib = import ./lib {inherit pkgs;}; # functions
-    modules = import ./modules; # NixOS modules
-    overlays = import ./overlays; # nixpkgs overlays
-    pkgs = mypkgs; # custom packages.
-  }
-  // mypkgs
+(
+  import
+  (
+    let
+      lock = builtins.fromJSON (builtins.readFile ./flake.lock);
+    in
+      fetchTarball {
+        url = "https://github.com/edolstra/flake-compat/archive/${lock.nodes.flake-compat.locked.rev}.tar.gz";
+        sha256 = lock.nodes.flake-compat.locked.narHash;
+      }
+  )
+  {src = ./.;}
+)
+.defaultNix
+.outputs
+.packages
+.${builtins.currentSystem}
