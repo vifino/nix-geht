@@ -1,7 +1,9 @@
 {
   description = "vifino's Nix repository - nix geht!";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    # Pin nixpkgs to the commit before the DPDK bump, we need v22.03.
+    # TODO: Fix this. Solve it better. Overlay?
+    nixpkgs.url = "github:NixOS/nixpkgs?rev=ee01de29d2f58d56b1be4ae24c24bd91c5380cea";
 
     flake-compat = {
       url = "github:edolstra/flake-compat";
