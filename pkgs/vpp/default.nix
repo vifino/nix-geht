@@ -32,13 +32,6 @@ assert (lib.asserts.assertMsg (!enableAfXdp || stdenv.isLinux) "Can't enable af_
         "aarch64-freebsd"
       ];
     };
-
-  # We need DPDK v22.03, apparently. Yikes.
-  old-dpdk =
-    (import (builtins.fetchTarball {
-      url = "https://github.com/NixOS/nixpkgs/archive/ee01de29d2f58d56b1be4ae24c24bd91c5380cea.tar.gz";
-    }) {})
-    .dpdk;
 in rec {
   vpp = stdenv.mkDerivation rec {
     pname = "vpp";
@@ -46,6 +39,9 @@ in rec {
     meta = getMeta "Vector Packet Processor Engine";
     inherit src;
     sourceRoot = "source/src";
+
+    # There are a lot of warnings. Yikes.
+    NIX_CFLAGS_COMPILE = ["-Wno-error"];
 
     nativeBuildInputs = with pkgs; [pkg-config cmake ninja nasm coreutils];
     buildInputs = with pkgs;
@@ -68,7 +64,7 @@ in rec {
         libmnl
       ]
       # dpdk plugin
-      ++ lib.optionals enableDpdk [old-dpdk libpcap jansson]
+      ++ lib.optionals enableDpdk [dpdk libpcap jansson]
       # rdma plugin - Mellanox/NVIDIA ConnectX-4+ device driver. Needs overridden rdma-core with static libs.
       ++ lib.optionals enableRdma [
         (rdma-core.overrideAttrs (x: {
