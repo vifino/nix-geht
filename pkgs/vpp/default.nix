@@ -38,6 +38,14 @@ in rec {
     inherit version;
     meta = getMeta "Vector Packet Processor Engine";
     inherit src;
+    patches = [
+      (pkgs.fetchpatch {
+         name = "fix-clang16-build.patch";
+         url = "https://github.com/FDio/vpp/commit/3d2f718e6fece410a903474741487fdff9d5cb27.patch";
+         hash = "sha256-tI6p7TNdDz/M/7iuAaFrKcLpkia/0tQwor3j9k0wjMA=";
+         stripLen = 1;
+      })
+    ];
     sourceRoot = "source/src";
 
     # There are a lot of warnings. Yikes.
