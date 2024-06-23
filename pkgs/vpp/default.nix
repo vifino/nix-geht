@@ -68,7 +68,10 @@ in rec {
         (dpdk.overrideAttrs (x: rec {
           mesonFlags = x.mesonFlags ++ ["-Denable_driver_sdk=true"];
         }))
-        libpcap jansson zstd]
+        libpcap
+        jansson
+        zstd
+      ]
       # rdma plugin - Mellanox/NVIDIA ConnectX-4+ device driver. Needs overridden rdma-core with static libs.
       ++ lib.optionals enableRdma [
         (rdma-core.overrideAttrs (x: {
