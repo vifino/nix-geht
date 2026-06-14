@@ -16,7 +16,6 @@ in
     inherit (shinyblink) ffshot ff-overlay ff-sort ff-glitch ff-notext;
     inherit (vifino) artsy;
 
-    opensoundmeter = pkgs.libsForQt5.callPackage ./opensoundmeter.nix {};
     midimonster = callPackage ./midimonster.nix {};
 
     # Troglobit's software
